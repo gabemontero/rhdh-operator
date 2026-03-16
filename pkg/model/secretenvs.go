@@ -1,13 +1,13 @@
 package model
 
 import (
-	"fmt"
+     "fmt"
 
-	"github.com/redhat-developer/rhdh-operator/api"
-	"github.com/redhat-developer/rhdh-operator/pkg/model/multiobject"
-	"k8s.io/apimachinery/pkg/runtime"
+     "github.com/redhat-developer/rhdh-operator/api"
+     "github.com/redhat-developer/rhdh-operator/pkg/model/multiobject"
+     "k8s.io/apimachinery/pkg/runtime"
 
-	corev1 "k8s.io/api/core/v1"
+     corev1 "k8s.io/api/core/v1"
 )
 
 const SecretEnvsObjectKey = "secret-envs.yaml"
@@ -15,73 +15,73 @@ const SecretEnvsObjectKey = "secret-envs.yaml"
 type SecretEnvsFactory struct{}
 
 func (f SecretEnvsFactory) newBackstageObject() RuntimeObject {
-	return &SecretEnvs{}
+     return &SecretEnvs{}
 }
 
 type SecretEnvs struct {
-	secrets *multiobject.MultiObject
-	model   *BackstageModel
+     secrets *multiobject.MultiObject
+     model   *BackstageModel
 }
 
 func init() {
-	registerConfig(SecretEnvsObjectKey, SecretEnvsFactory{}, true, nil)
+     registerConfig(SecretEnvsObjectKey, SecretEnvsFactory{}, true, mergeMultiObjectConfigs)
 }
 
 func (p *SecretEnvs) addExternalConfig(spec api.BackstageSpec) error {
-	if spec.Application == nil || spec.Application.ExtraEnvs == nil || spec.Application.ExtraEnvs.Secrets == nil {
-		return nil
-	}
+     if spec.Application == nil || spec.Application.ExtraEnvs == nil || spec.Application.ExtraEnvs.Secrets == nil {
+          return nil
+     }
 
-	for _, specSec := range spec.Application.ExtraEnvs.Secrets {
-		err := p.model.backstageDeployment.addEnvVarsFrom(containersFilter{names: specSec.Containers}, SecretObjectKind, specSec.Name, specSec.Key)
-		if err != nil {
-			return fmt.Errorf("failed to add env vars on secret %s: %w", specSec.Name, err)
-		}
-	}
-	return nil
+     for _, specSec := range spec.Application.ExtraEnvs.Secrets {
+          err := p.model.backstageDeployment.addEnvVarsFrom(containersFilter{names: specSec.Containers}, SecretObjectKind, specSec.Name, specSec.Key)
+          if err != nil {
+               return fmt.Errorf("failed to add env vars on secret %s: %w", specSec.Name, err)
+          }
+     }
+     return nil
 }
 
 // implementation of RuntimeObject interface
 func (p *SecretEnvs) Object() runtime.Object {
-	return p.secrets
+     return p.secrets
 }
 
 // implementation of RuntimeObject interface
 func (p *SecretEnvs) setObject(obj runtime.Object) {
-	p.secrets = nil
-	if obj != nil {
-		p.secrets = obj.(*multiobject.MultiObject)
-	}
+     p.secrets = nil
+     if obj != nil {
+          p.secrets = obj.(*multiobject.MultiObject)
+     }
 }
 
 // implementation of RuntimeObject interface
 func (p *SecretEnvs) addToModel(model *BackstageModel, _ api.Backstage) (bool, error) {
-	p.model = model
-	if p.secrets != nil {
-		model.setRuntimeObject(p)
-		return true, nil
-	}
-	return false, nil
+     p.model = model
+     if p.secrets != nil {
+          model.setRuntimeObject(p)
+          return true, nil
+     }
+     return false, nil
 }
 
 // implementation of RuntimeObject interface
 func (p *SecretEnvs) updateAndValidate(_ api.Backstage) error {
 
-	for _, item := range p.secrets.Items {
-		_, ok := item.(*corev1.Secret)
-		if !ok {
-			return fmt.Errorf("payload is not Secret kind: %T", item)
-		}
-		err := p.model.backstageDeployment.addEnvVarsFrom(containersFilter{annotation: item.GetAnnotations()[ContainersAnnotation]}, SecretObjectKind, item.GetName(), "")
-		if err != nil {
-			return fmt.Errorf("failed to add env vars from secret %s: %w", item.GetName(), err)
-		}
-	}
+     for _, item := range p.secrets.Items {
+          _, ok := item.(*corev1.Secret)
+          if !ok {
+               return fmt.Errorf("payload is not Secret kind: %T", item)
+          }
+          err := p.model.backstageDeployment.addEnvVarsFrom(containersFilter{annotation: item.GetAnnotations()[ContainersAnnotation]}, SecretObjectKind, item.GetName(), "")
+          if err != nil {
+               return fmt.Errorf("failed to add env vars from secret %s: %w", item.GetName(), err)
+          }
+     }
 
-	return nil
+     return nil
 }
 
 // implementation of RuntimeObject interface
 func (p *SecretEnvs) setMetaInfo(backstage api.Backstage, scheme *runtime.Scheme) {
-	setMultiObjectConfigMetaInfo(p.secrets, "envs", backstage, scheme)
+     setMultiObjectConfigMetaInfo(p.secrets, "envs", backstage, scheme)
 }
